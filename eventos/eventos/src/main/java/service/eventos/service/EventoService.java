@@ -40,7 +40,7 @@ public class EventoService {
         Evento evento = buscarEventoPorId(eventoId);
 
         if (evento.getParticipanteId().size() >= evento.getCapacidade()) {
-            throw new IllegalStateException("Evento com capacidade máxima atingida.");
+            throw new IllegalStateException("Evento com capacidade máxima atingida!");
         }
         if (evento.getStatus() != StatusEvento.ATIVO) {
             throw new IllegalStateException("Só é possível se inscrever em eventos ativos.");
