@@ -1,0 +1,16 @@
+service\eventos\dto\CategoriaDto.class
+service\eventos\repository\CategoriaRepository.class
+service\eventos\Security\SecurityConfig.class
+service\eventos\service\EventoService.class
+service\eventos\model\Categoria.class
+service\eventos\model\StatusEvento.class
+service\eventos\service\CategoriaService.class
+service\eventos\dto\EventoRequisicaoDto.class
+service\eventos\dto\EventoRespostaDto.class
+service\eventos\EventosApplication.class
+service\eventos\controller\EventoController.class
+service\eventos\repository\EventoRepository.class
+service\eventos\dto\CategoriaRequisicaoDto.class
+service\eventos\exception\RecursoNaoEncontradoException.class
+service\eventos\model\Evento.class
+service\eventos\controller\CategoriaController.class
