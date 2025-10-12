@@ -105,4 +105,11 @@ public class EventoService {
 
         return dto;
     }
+
+    public EventoRespostaDto buscarPorId(Long id) {
+        Evento evento = eventoRepository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Evento não encontrado com ID: " + id));
+
+        return new EventoRespostaDto(evento);
+    }
 }

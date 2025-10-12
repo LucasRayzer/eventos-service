@@ -1,10 +1,15 @@
 package service.eventos.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
+import service.eventos.model.Evento;
 import service.eventos.model.StatusEvento;
 import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class EventoRespostaDto {
     private Long id;
     private String nome;
@@ -16,4 +21,21 @@ public class EventoRespostaDto {
     private StatusEvento status;
     private Long organizerId;
     private CategoriaDto categoria;
+
+    public EventoRespostaDto(Evento evento) {
+        this.id = evento.getId();
+        this.nome = evento.getNome();
+        this.descricao = evento.getDescricao();
+        this.localizacao = evento.getLocalizacao();
+        this.organizerId = evento.getOrganizerId();
+        this.status = evento.getStatus();
+        this.data = evento.getData();
+        this.capacidade = evento.getCapacidade();
+        if (evento.getCapacidade() != null) {
+            int inscritos = (evento.getParticipanteId() != null) ? evento.getParticipanteId().size() : 0;
+            this.vagas = Math.max(0, evento.getCapacidade() - inscritos);
+        } else {
+            this.vagas = null;
+        }
+    }
 }

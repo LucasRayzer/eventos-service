@@ -27,6 +27,12 @@ public class EventoController {
         return new ResponseEntity<>(eventoCriado, HttpStatus.CREATED);
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<EventoRespostaDto> buscarEventoPorId(@PathVariable Long id) {
+        EventoRespostaDto evento = eventoService.buscarPorId(id);
+        return ResponseEntity.ok(evento);
+    }
+
     @GetMapping("/meus-eventos")
     public ResponseEntity<Page<EventoRespostaDto>> getMeusEventos(
             Pageable pageable,
