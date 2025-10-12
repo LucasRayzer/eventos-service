@@ -81,10 +81,13 @@ public class EventoService {
     }
 
     // MÉTODOS PARA PARTICIPANTES
-
     @Transactional
     public void inscreverEmEvento(Long eventoId, Long participanteId) {
         Evento evento = buscarEventoPorId(eventoId);
+
+        if (evento.getParticipanteId().contains(participanteId)) {
+            throw new IllegalStateException("Usuário já inscrito neste evento.");
+        }
 
         if (evento.getParticipanteId().size() >= evento.getCapacidade()) {
             throw new IllegalStateException("Evento com capacidade máxima atingida.");

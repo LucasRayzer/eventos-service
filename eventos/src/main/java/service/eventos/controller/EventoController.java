@@ -26,63 +26,88 @@ public class EventoController {
         return ResponseEntity.ok(eventos);
     }
 
-    // endpoint para um participante se inscrever em um evento
     @PostMapping("/{eventoId}/inscrever")
-    public ResponseEntity<Void> inscreverEmEvento(
+    public ResponseEntity<?> inscreverEmEvento(
             @PathVariable Long eventoId,
-            @RequestHeader("X-User-ID") Long participanteId
+            @RequestHeader("X-User-ID") Long participanteId,
+            @RequestHeader("X-User-Role") Integer userRole
     ) {
+        //verificação de permissão
+        if (userRole != 2) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Acesso negado: Apenas participantes (tipo 2) podem se inscrever.");
+        }
         eventoService.inscreverEmEvento(eventoId, participanteId);
         return ResponseEntity.ok().build();
     }
 
-    // endpoint para um participante ver suas inscrições
     @GetMapping("/minhas-inscricoes")
-    public ResponseEntity<Page<EventoRespostaDto>> getMinhasInscricoes(
+    public ResponseEntity<?> getMinhasInscricoes(
             Pageable pageable,
-            @RequestHeader("X-User-ID") Long participanteId
+            @RequestHeader("X-User-ID") Long participanteId,
+            @RequestHeader("X-User-Role") Integer userRole
     ) {
+        //Verificação de permissão
+        if (userRole != 2) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Acesso negado: Apenas participantes (tipo 2) podem ver suas inscrições.");
+        }
         Page<EventoRespostaDto> eventos = eventoService.buscarInscricoesDoParticipante(participanteId, pageable);
         return ResponseEntity.ok(eventos);
     }
 
-    // endpoint para um organizador criar um evento
-    @PostMapping
-    public ResponseEntity<EventoRespostaDto> criarEvento(
+    // Endpoints de Organizador
+    @PostMapping("/{criar-evento}")
+    public ResponseEntity<?> criarEvento(
             @Valid @RequestBody EventoRequisicaoDto requisicaoDto,
-            @RequestHeader("X-User-ID") Long organizerId
+            @RequestHeader("X-User-ID") Long organizerId,
+            @RequestHeader("X-User-Role") Integer userRole
     ) {
+        //Verificação de permissão
+        if (userRole != 1) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Acesso negado: Apenas organizadores (tipo 1) podem criar eventos.");
+        }
         EventoRespostaDto eventoCriado = eventoService.criarEvento(requisicaoDto, organizerId);
         return new ResponseEntity<>(eventoCriado, HttpStatus.CREATED);
     }
 
-    // endpoint para o organizador atualizar um evento
     @PutMapping("/{eventoId}")
-    public ResponseEntity<EventoRespostaDto> atualizarEvento(
+    public ResponseEntity<?> atualizarEvento(
             @PathVariable Long eventoId,
             @Valid @RequestBody EventoRequisicaoDto requisicaoDto,
-            @RequestHeader("X-User-ID") Long organizerId
+            @RequestHeader("X-User-ID") Long organizerId,
+            @RequestHeader("X-User-Role") Integer userRole
     ) {
+        //erificação de permissão
+        if (userRole != 1) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Acesso negado: Apenas organizadores (tipo 1) podem atualizar eventos.");
+        }
         EventoRespostaDto eventoAtualizado = eventoService.atualizarEvento(eventoId, requisicaoDto, organizerId);
         return ResponseEntity.ok(eventoAtualizado);
     }
 
-    // endpoint para um organizador ver os eventos que ele criou
     @GetMapping("/meus-eventos")
-    public ResponseEntity<Page<EventoRespostaDto>> getMeusEventos(
+    public ResponseEntity<?> getMeusEventos(
             Pageable pageable,
-            @RequestHeader("X-User-ID") Long organizerId
+            @RequestHeader("X-User-ID") Long organizerId,
+            @RequestHeader("X-User-Role") Integer userRole
     ) {
+        //Verificação de permissão
+        if (userRole != 1) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Acesso negado: Apenas organizadores (tipo 1) podem ver seus eventos.");
+        }
         Page<EventoRespostaDto> eventos = eventoService.buscarEventosDoOrganizador(organizerId, pageable);
         return ResponseEntity.ok(eventos);
     }
 
-    // endpoint para organizador deletar um evento
     @DeleteMapping("/{eventoId}")
-    public ResponseEntity<Void> deletarEvento(
+    public ResponseEntity<?> deletarEvento(
             @PathVariable Long eventoId,
-            @RequestHeader("X-User-ID") Long organizerId
+            @RequestHeader("X-User-ID") Long organizerId,
+            @RequestHeader("X-User-Role") Integer userRole
     ) {
+        //Verificação de permissão
+        if (userRole != 1) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Acesso negado: Apenas organizadores (tipo 1) podem deletar eventos.");
+        }
         eventoService.deletarEvento(eventoId, organizerId);
         return ResponseEntity.noContent().build();
     }
