@@ -17,6 +17,7 @@ public class EventoService {
     private final EventoRepository eventoRepository;
     private final CategoriaRepository categoriaRepository;
 
+    //MÉTODOS PARA ORGANIZADORES
     @Transactional
     public EventoRespostaDto criarEvento(EventoRequisicaoDto requisicaoDto, Long organizerId) {
         Categoria categoria = buscarCategoriaPorId(requisicaoDto.getCategoriaId());
@@ -35,6 +36,52 @@ public class EventoService {
         return paraRespostaDto(eventoSalvo);
     }
 
+    // funcionalidade de Atualizar Evento
+    @Transactional
+    public EventoRespostaDto atualizarEvento(Long eventoId, EventoRequisicaoDto requisicaoDto, Long organizerId) {
+        Evento eventoExistente = buscarEventoPorId(eventoId);
+
+        // apenas o dono do evento pode atualizar
+        if (!eventoExistente.getOrganizerId().equals(organizerId)) {
+            throw new SecurityException("Apenas o organizador pode atualizar o evento.");
+        }
+
+        Categoria categoria = buscarCategoriaPorId(requisicaoDto.getCategoriaId());
+
+        eventoExistente.setNome(requisicaoDto.getNome());
+        eventoExistente.setDescricao(requisicaoDto.getDescricao());
+        eventoExistente.setLocalizacao(requisicaoDto.getLocalizacao());
+        eventoExistente.setData(requisicaoDto.getData());
+        eventoExistente.setCapacidade(requisicaoDto.getCapacidade());
+        eventoExistente.setCategoria(categoria);
+
+        Evento eventoAtualizado = eventoRepository.save(eventoExistente);
+        return paraRespostaDto(eventoAtualizado);
+    }
+
+    @Transactional
+    public void deletarEvento(Long eventoId, Long organizerId) {
+        Evento evento = buscarEventoPorId(eventoId);
+
+        // apenas o dono pode excluir
+        if (!evento.getOrganizerId().equals(organizerId)) {
+            throw new SecurityException("Apenas o organizador pode excluir o evento.");
+        }
+        // não pode excluir se tiver inscritos
+        if (!evento.getParticipanteId().isEmpty()) {
+            throw new IllegalStateException("Não é possível excluir um evento com participantes inscritos.");
+        }
+
+        eventoRepository.delete(evento);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<EventoRespostaDto> buscarEventosDoOrganizador(Long organizerId, Pageable pageable) {
+        return eventoRepository.findByOrganizerId(organizerId, pageable).map(this::paraRespostaDto);
+    }
+
+    // MÉTODOS PARA PARTICIPANTES
+
     @Transactional
     public void inscreverEmEvento(Long eventoId, Long participanteId) {
         Evento evento = buscarEventoPorId(eventoId);
@@ -51,30 +98,17 @@ public class EventoService {
     }
 
     @Transactional(readOnly = true)
-    public Page<EventoRespostaDto> buscarEventosDoOrganizador(Long organizerId, Pageable pageable) {
-        Page<Evento> eventos = eventoRepository.findByOrganizerId(organizerId, pageable);
-        return eventos.map(this::paraRespostaDto);
-    }
-
-    @Transactional(readOnly = true)
     public Page<EventoRespostaDto> buscarInscricoesDoParticipante(Long participanteId, Pageable pageable) {
-        Page<Evento> eventos = eventoRepository.findByParticipanteIdContains(participanteId, pageable);
-        return eventos.map(this::paraRespostaDto);
+        return eventoRepository.findByParticipanteIdContains(participanteId, pageable).map(this::paraRespostaDto);
     }
 
-    @Transactional
-    public void deletarEvento(Long eventoId, Long organizerId) {
-        Evento evento = buscarEventoPorId(eventoId);
 
-        if (!evento.getOrganizerId().equals(organizerId)) {
-            throw new SecurityException("Apenas o organizador pode excluir o evento.");
-        }
-        if (!evento.getParticipanteId().isEmpty()) {
-            throw new IllegalStateException("Não é possível excluir um evento com participantes inscritos.");
-        }
-
-        eventoRepository.delete(evento);
+    // para o participante visualizar todos os eventos disponíveis
+    @Transactional(readOnly = true)
+    public Page<EventoRespostaDto> listarEventosDisponiveis(Pageable pageable) {
+        return eventoRepository.findByStatus(StatusEvento.ATIVO, pageable).map(this::paraRespostaDto);
     }
+
 
     private Evento buscarEventoPorId(Long eventoId) {
         return eventoRepository.findById(eventoId)
