@@ -111,4 +111,10 @@ public class EventoController {
         eventoService.deletarEvento(eventoId, organizerId);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<EventoRespostaDto> buscarEventoPorId(@PathVariable Long id) {
+        EventoRespostaDto evento = eventoService.buscarPorId(id);
+        return ResponseEntity.ok(evento);
+    }
 }
