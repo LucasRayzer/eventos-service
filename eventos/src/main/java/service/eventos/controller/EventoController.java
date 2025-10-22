@@ -55,7 +55,7 @@ public class EventoController {
     }
 
     // Endpoints de Organizador
-    @PostMapping("/{criar-evento}")
+    @PostMapping("/criar-evento")
     public ResponseEntity<?> criarEvento(
             @Valid @RequestBody EventoRequisicaoDto requisicaoDto,
             @RequestHeader("X-User-ID") Long organizerId,
