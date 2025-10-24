@@ -1,5 +1,6 @@
 package service.eventos.service;
 
+import service.eventos.client.IngressosClient;
 import service.eventos.dto.*;
 import service.eventos.exception.RecursoNaoEncontradoException;
 import service.eventos.model.*;
@@ -16,6 +17,7 @@ public class EventoService {
 
     private final EventoRepository eventoRepository;
     private final CategoriaRepository categoriaRepository;
+    private final IngressosClient ingressosClient;
 
     //MÉTODOS PARA ORGANIZADORES
     @Transactional
@@ -98,6 +100,7 @@ public class EventoService {
 
         evento.getParticipanteId().add(participanteId);
         eventoRepository.save(evento);
+        ingressosClient.createTicket(eventoId, participanteId, "PIX");
     }
 
     @Transactional(readOnly = true)
