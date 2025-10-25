@@ -94,7 +94,7 @@ class EventoServiceTest {
         Evento eventoMock = criarEventoMock(eventoId, organizerId, 2);
 
         when(eventoRepository.findById(eventoId)).thenReturn(Optional.of(eventoMock));
-        doNothing().when(ingressosClient).createTicket(eventoId, participanteId, "PIX");
+        when(ingressosClient.createTicket(eventoId, participanteId, "PIX")).thenReturn(null);
 
         eventoService.inscreverEmEvento(eventoId, participanteId);
 
