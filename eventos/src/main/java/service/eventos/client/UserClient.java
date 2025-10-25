@@ -41,7 +41,7 @@ public class UserClient {
 
     @Data
     public static class UserRespostaDto {
-        private String id;
+        private UUID id;
         private String nome;
         private String tipo;
     }
