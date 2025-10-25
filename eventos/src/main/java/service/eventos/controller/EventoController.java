@@ -29,11 +29,13 @@ public class EventoController {
         Page<EventoRespostaDto> eventos = eventoService.listarEventosDisponiveis(pageable);
         return ResponseEntity.ok(eventos);
     }
-
+    /**
+     * URL: POST /eventos/{eventoId}/inscrever?participanteId=X
+     */
     @PostMapping("/{eventoId}/inscrever")
     public ResponseEntity<?> inscreverEmEvento(
             @PathVariable Long eventoId,
-            @RequestHeader("X-User-ID") UUID participanteId
+            @RequestParam("participanteId") UUID participanteId
     ) {
         UserClient.UserRespostaDto usuario = userClient.getUserById(participanteId);
         if (usuario == null) {
@@ -46,11 +48,13 @@ public class EventoController {
         eventoService.inscreverEmEvento(eventoId, participanteId);
         return ResponseEntity.ok().build();
     }
-
+    /**
+     * URL: GET /eventos/minhas-inscricoes?participanteId=X
+     */
     @GetMapping("/minhas-inscricoes")
     public ResponseEntity<?> getMinhasInscricoes(
             Pageable pageable,
-            @RequestHeader("X-User-ID") UUID participanteId
+            @RequestParam("participanteId") UUID participanteId
     ) {
         UserClient.UserRespostaDto usuario = userClient.getUserById(participanteId);
         if (usuario == null) {
@@ -65,10 +69,13 @@ public class EventoController {
     }
 
     // Endpoints de Organizador
+    /**
+     * URL: POST /eventos/criar-evento?organizerId=X
+     */
     @PostMapping("/criar-evento")
     public ResponseEntity<?> criarEvento(
             @Valid @RequestBody EventoRequisicaoDto requisicaoDto,
-            @RequestHeader("X-User-ID") UUID organizerId
+            @RequestParam("organizerId") UUID organizerId
     ) {
         UserClient.UserRespostaDto usuario = userClient.getUserById(organizerId);
         if (usuario == null) {
@@ -81,12 +88,14 @@ public class EventoController {
         EventoRespostaDto eventoCriado = eventoService.criarEvento(requisicaoDto, organizerId);
         return new ResponseEntity<>(eventoCriado, HttpStatus.CREATED);
     }
-
+    /**
+     * URL: PUT /eventos/{eventoId}?organizerId=X
+     */
     @PutMapping("/{eventoId}")
     public ResponseEntity<?> atualizarEvento(
             @PathVariable Long eventoId,
             @Valid @RequestBody EventoRequisicaoDto requisicaoDto,
-            @RequestHeader("X-User-ID") UUID organizerId
+            @RequestParam("organizerId") UUID organizerId
 
     ) {
         UserClient.UserRespostaDto usuario = userClient.getUserById(organizerId);
@@ -100,11 +109,13 @@ public class EventoController {
         EventoRespostaDto eventoAtualizado = eventoService.atualizarEvento(eventoId, requisicaoDto, organizerId);
         return ResponseEntity.ok(eventoAtualizado);
     }
-
+    /**
+     * URL: GET /eventos/meus-eventos?organizerId=X
+     */
     @GetMapping("/meus-eventos")
     public ResponseEntity<?> getMeusEventos(
             Pageable pageable,
-            @RequestHeader("X-User-ID") UUID organizerId
+            @RequestParam("organizerId") UUID organizerId
     ) {
         UserClient.UserRespostaDto usuario = userClient.getUserById(organizerId);
         if (usuario == null) {
@@ -117,11 +128,13 @@ public class EventoController {
         Page<EventoRespostaDto> eventos = eventoService.buscarEventosDoOrganizador(organizerId, pageable);
         return ResponseEntity.ok(eventos);
     }
-
+    /**
+     * URL: DELETE /eventos/{eventoId}?organizerId=X
+     */
     @DeleteMapping("/{eventoId}")
     public ResponseEntity<?> deletarEvento(
             @PathVariable Long eventoId,
-            @RequestHeader("X-User-ID") UUID organizerId
+            @RequestParam("organizerId") UUID organizerId
     ) {
         UserClient.UserRespostaDto usuario = userClient.getUserById(organizerId);
         if (usuario == null) {
@@ -134,7 +147,7 @@ public class EventoController {
         eventoService.deletarEvento(eventoId, organizerId);
         return ResponseEntity.noContent().build();
     }
-
+    //endpoint público
     @GetMapping("/{id}")
     public ResponseEntity<EventoRespostaDto> buscarEventoPorId(@PathVariable Long id) {
         EventoRespostaDto evento = eventoService.buscarPorId(id);
