@@ -6,6 +6,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 @Entity
 @Table(name = "eventos")
@@ -37,7 +38,7 @@ public class Evento {
     private StatusEvento status;
 
     @Column(nullable = false)
-    private Long organizerId;
+    private UUID organizerId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "categoria_id", nullable = false)
@@ -46,5 +47,5 @@ public class Evento {
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "evento_participantes", joinColumns = @JoinColumn(name = "evento_id"))
     @Column(name = "participante_id")
-    private Set<Long> participanteId = new HashSet<>();
+    private Set<UUID> participanteId = new HashSet<>();
 }

@@ -6,6 +6,7 @@ import service.eventos.model.Evento;
 import service.eventos.model.StatusEvento;
 import lombok.Data;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @AllArgsConstructor
@@ -19,7 +20,8 @@ public class EventoRespostaDto {
     private Integer capacidade;
     private Integer vagas;
     private StatusEvento status;
-    private Long organizerId;
+    private UUID organizerId;
+    private String organizerNome;
     private CategoriaDto categoria;
 
     public EventoRespostaDto(Evento evento) {
@@ -38,4 +40,6 @@ public class EventoRespostaDto {
             this.vagas = null;
         }
     }
+
+
 }

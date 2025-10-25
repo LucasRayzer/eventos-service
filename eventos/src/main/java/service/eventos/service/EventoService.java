@@ -1,6 +1,7 @@
 package service.eventos.service;
 
 import service.eventos.client.IngressosClient;
+import service.eventos.client.UserClient;
 import service.eventos.dto.*;
 import service.eventos.exception.RecursoNaoEncontradoException;
 import service.eventos.model.*;
@@ -11,6 +12,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
 public class EventoService {
@@ -18,10 +21,11 @@ public class EventoService {
     private final EventoRepository eventoRepository;
     private final CategoriaRepository categoriaRepository;
     private final IngressosClient ingressosClient;
+    private final UserClient userClient;
 
     //MÉTODOS PARA ORGANIZADORES
     @Transactional
-    public EventoRespostaDto criarEvento(EventoRequisicaoDto requisicaoDto, Long organizerId) {
+    public EventoRespostaDto criarEvento(EventoRequisicaoDto requisicaoDto, UUID organizerId) {
         Categoria categoria = buscarCategoriaPorId(requisicaoDto.getCategoriaId());
 
         Evento evento = new Evento();
@@ -40,7 +44,7 @@ public class EventoService {
 
     // funcionalidade de Atualizar Evento
     @Transactional
-    public EventoRespostaDto atualizarEvento(Long eventoId, EventoRequisicaoDto requisicaoDto, Long organizerId) {
+    public EventoRespostaDto atualizarEvento(Long eventoId, EventoRequisicaoDto requisicaoDto, UUID organizerId) {
         Evento eventoExistente = buscarEventoPorId(eventoId);
 
         // apenas o dono do evento pode atualizar
@@ -62,7 +66,7 @@ public class EventoService {
     }
 
     @Transactional
-    public void deletarEvento(Long eventoId, Long organizerId) {
+    public void deletarEvento(Long eventoId, UUID organizerId) {
         Evento evento = buscarEventoPorId(eventoId);
 
         // apenas o dono pode excluir
@@ -78,13 +82,13 @@ public class EventoService {
     }
 
     @Transactional(readOnly = true)
-    public Page<EventoRespostaDto> buscarEventosDoOrganizador(Long organizerId, Pageable pageable) {
+    public Page<EventoRespostaDto> buscarEventosDoOrganizador(UUID organizerId, Pageable pageable) {
         return eventoRepository.findByOrganizerId(organizerId, pageable).map(this::paraRespostaDto);
     }
 
     // MÉTODOS PARA PARTICIPANTES
     @Transactional
-    public void inscreverEmEvento(Long eventoId, Long participanteId) {
+    public void inscreverEmEvento(Long eventoId, UUID participanteId) {
         Evento evento = buscarEventoPorId(eventoId);
 
         if (evento.getParticipanteId().contains(participanteId)) {
@@ -104,7 +108,7 @@ public class EventoService {
     }
 
     @Transactional(readOnly = true)
-    public Page<EventoRespostaDto> buscarInscricoesDoParticipante(Long participanteId, Pageable pageable) {
+    public Page<EventoRespostaDto> buscarInscricoesDoParticipante(UUID participanteId, Pageable pageable) {
         return eventoRepository.findByParticipanteIdContains(participanteId, pageable).map(this::paraRespostaDto);
     }
 
@@ -125,7 +129,6 @@ public class EventoService {
         return categoriaRepository.findById(categoriaId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Categoria não encontrada com ID: " + categoriaId));
     }
-
     private EventoRespostaDto paraRespostaDto(Evento evento) {
         EventoRespostaDto dto = new EventoRespostaDto();
         dto.setId(evento.getId());
@@ -142,6 +145,20 @@ public class EventoService {
         categoriaDto.setId(evento.getCategoria().getId());
         categoriaDto.setNome(evento.getCategoria().getNome());
         dto.setCategoria(categoriaDto);
+
+        // pega o dto do usuário
+        try {
+            UserClient.UserRespostaDto organizador = userClient.getUserById(evento.getOrganizerId());
+            if (organizador != null) {
+                dto.setOrganizerNome(organizador.getNome());
+            } else {
+                dto.setOrganizerNome("Organizador não encontrado");
+            }
+        } catch (Exception e) {
+            // Em caso de falha (ex: user-service offline),
+            // não quebramos a requisição inteira
+            dto.setOrganizerNome("Nome indisponível (serviço offline)");
+        }
 
         return dto;
     }
