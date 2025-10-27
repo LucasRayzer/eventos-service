@@ -21,136 +21,99 @@ import java.util.UUID;
 public class EventoController {
 
     private final EventoService eventoService;
-    private final UserClient userClient;
+    // private final UserClient userClient; // <- não precisa mais para “quem sou eu”
 
-    // endpoint publico para listar todos os eventos disponíveis
+    // Público
     @GetMapping
     public ResponseEntity<Page<EventoRespostaDto>> listarEventosDisponiveis(Pageable pageable) {
-        Page<EventoRespostaDto> eventos = eventoService.listarEventosDisponiveis(pageable);
-        return ResponseEntity.ok(eventos);
+        return ResponseEntity.ok(eventoService.listarEventosDisponiveis(pageable));
     }
-    /**
-     * URL: POST /eventos/{eventoId}/inscrever?participanteId=X
-     */
+
+    // Público
+    @GetMapping("/{id}")
+    public ResponseEntity<EventoRespostaDto> buscarEventoPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(eventoService.buscarPorId(id));
+    }
+
+    // ======== Fluxo CLIENTE ========
+
     @PostMapping("/{eventoId}/inscrever")
     public ResponseEntity<?> inscreverEmEvento(
             @PathVariable Long eventoId,
-            @RequestParam("participanteId") UUID participanteId
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
+            @RequestHeader(value = "X-User-Roles", required = false) String rolesCsv
     ) {
-        UserClient.UserRespostaDto usuario = userClient.getUserById(participanteId);
-        if (usuario == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuário não autenticado.");
-        }
-        if (!"CLIENTE".equals(usuario.getTipo())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Acesso negado: Apenas participantes (CLIENTE) podem se inscrever.");
-        }
+        if (userId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuário não autenticado.");
+        if (!hasRole(rolesCsv, "CLIENTE"))
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Apenas CLIENTE pode se inscrever.");
 
-        eventoService.inscreverEmEvento(eventoId, participanteId);
+        eventoService.inscreverEmEvento(eventoId, userId);
         return ResponseEntity.ok().build();
     }
-    /**
-     * URL: GET /eventos/minhas-inscricoes?participanteId=X
-     */
+
     @GetMapping("/minhas-inscricoes")
     public ResponseEntity<?> getMinhasInscricoes(
             Pageable pageable,
-            @RequestParam("participanteId") UUID participanteId
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
+            @RequestHeader(value = "X-User-Roles", required = false) String rolesCsv
     ) {
-        UserClient.UserRespostaDto usuario = userClient.getUserById(participanteId);
-        if (usuario == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuário não autenticado.");
-        }
-        if (!"CLIENTE".equals(usuario.getTipo())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Acesso negado: Apenas participantes (CLIENTE) podem ver suas inscrições.");
-        }
+        if (userId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuário não autenticado.");
+        if (!hasRole(rolesCsv, "CLIENTE"))
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Apenas CLIENTE pode consultar.");
 
-        Page<EventoRespostaDto> eventos = eventoService.buscarInscricoesDoParticipante(participanteId, pageable);
-        return ResponseEntity.ok(eventos);
+        return ResponseEntity.ok(eventoService.buscarInscricoesDoParticipante(userId, pageable));
     }
 
-    // Endpoints de Organizador
-    /**
-     * URL: POST /eventos/criar-evento?organizerId=X
-     */
+    // ======== Fluxo ORGANIZADOR ========
+
     @PostMapping("/criar-evento")
     public ResponseEntity<?> criarEvento(
             @Valid @RequestBody EventoRequisicaoDto requisicaoDto,
-            @RequestParam("organizerId") UUID organizerId
+            @RequestHeader(value = "X-User-Id", required = false) UUID organizerId,
+            @RequestHeader(value = "X-User-Roles", required = false) String rolesCsv
     ) {
-        UserClient.UserRespostaDto usuario = userClient.getUserById(organizerId);
-        if (usuario == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuário não autenticado.");
-        }
-        if (!"ORGANIZADOR".equals(usuario.getTipo())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Acesso negado: Apenas organizadores (ORGANIZADOR) podem criar eventos.");
-        }
+        if (organizerId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuário não autenticado.");
+        if (!hasRole(rolesCsv, "ORGANIZADOR"))
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Apenas ORGANIZADOR pode criar evento.");
 
-        EventoRespostaDto eventoCriado = eventoService.criarEvento(requisicaoDto, organizerId);
+        var eventoCriado = eventoService.criarEvento(requisicaoDto, organizerId);
         return new ResponseEntity<>(eventoCriado, HttpStatus.CREATED);
     }
-    /**
-     * URL: PUT /eventos/{eventoId}?organizerId=X
-     */
+
     @PutMapping("/{eventoId}")
     public ResponseEntity<?> atualizarEvento(
             @PathVariable Long eventoId,
             @Valid @RequestBody EventoRequisicaoDto requisicaoDto,
-            @RequestParam("organizerId") UUID organizerId
-
+            @RequestHeader(value = "X-User-Id", required = false) UUID organizerId,
+            @RequestHeader(value = "X-User-Roles", required = false) String rolesCsv
     ) {
-        UserClient.UserRespostaDto usuario = userClient.getUserById(organizerId);
-        if (usuario == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuário não autenticado.");
-        }
-        if (!"ORGANIZADOR".equals(usuario.getTipo())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Acesso negado: Apenas organizadores (ORGANIZADOR) podem atualizar eventos.");
-        }
+        if (organizerId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuário não autenticado.");
+        if (!hasRole(rolesCsv, "ORGANIZADOR"))
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Apenas ORGANIZADOR pode atualizar.");
 
-        EventoRespostaDto eventoAtualizado = eventoService.atualizarEvento(eventoId, requisicaoDto, organizerId);
-        return ResponseEntity.ok(eventoAtualizado);
+        return ResponseEntity.ok(eventoService.atualizarEvento(eventoId, requisicaoDto, organizerId));
     }
-    /**
-     * URL: GET /eventos/meus-eventos?organizerId=X
-     */
-    @GetMapping("/meus-eventos")
-    public ResponseEntity<?> getMeusEventos(
-            Pageable pageable,
-            @RequestParam("organizerId") UUID organizerId
-    ) {
-        UserClient.UserRespostaDto usuario = userClient.getUserById(organizerId);
-        if (usuario == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuário não autenticado.");
-        }
-        if (!"ORGANIZADOR".equals(usuario.getTipo())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Acesso negado: Apenas organizadores (ORGANIZADOR) podem ver seus eventos.");
-        }
 
-        Page<EventoRespostaDto> eventos = eventoService.buscarEventosDoOrganizador(organizerId, pageable);
-        return ResponseEntity.ok(eventos);
-    }
-    /**
-     * URL: DELETE /eventos/{eventoId}?organizerId=X
-     */
     @DeleteMapping("/{eventoId}")
     public ResponseEntity<?> deletarEvento(
             @PathVariable Long eventoId,
-            @RequestParam("organizerId") UUID organizerId
+            @RequestHeader(value = "X-User-Id", required = false) UUID organizerId,
+            @RequestHeader(value = "X-User-Roles", required = false) String rolesCsv
     ) {
-        UserClient.UserRespostaDto usuario = userClient.getUserById(organizerId);
-        if (usuario == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuário não autenticado.");
-        }
-        if (!"ORGANIZADOR".equals(usuario.getTipo())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Acesso negado: Apenas organizadores (ORGANIZADOR) podem deletar eventos.");
-        }
+        if (organizerId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuário não autenticado.");
+        if (!hasRole(rolesCsv, "ORGANIZADOR"))
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Apenas ORGANIZADOR pode deletar.");
 
         eventoService.deletarEvento(eventoId, organizerId);
         return ResponseEntity.noContent().build();
     }
-    //endpoint público
-    @GetMapping("/{id}")
-    public ResponseEntity<EventoRespostaDto> buscarEventoPorId(@PathVariable Long id) {
-        EventoRespostaDto evento = eventoService.buscarPorId(id);
-        return ResponseEntity.ok(evento);
+
+    // utilzinho local
+    private boolean hasRole(String rolesCsv, String role) {
+        if (rolesCsv == null || rolesCsv.isBlank()) return false;
+        for (String r : rolesCsv.split(",")) {
+            if (role.equalsIgnoreCase(r.trim())) return true;
+        }
+        return false;
     }
 }

@@ -38,7 +38,7 @@ public class IngressosClient {
     public static class TicketCreateRequest {
         private Long eventId;
         private UUID participantId;
-        private String method; // "PIX", "CARTAO" (opcional)
+        private String method;
 
         public TicketCreateRequest(Long eventId, UUID participantId, String method) {
             this.eventId = eventId;
