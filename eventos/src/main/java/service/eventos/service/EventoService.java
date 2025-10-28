@@ -2,6 +2,7 @@ package service.eventos.service;
 
 import service.eventos.client.IngressosClient;
 import service.eventos.client.UserClient;
+import service.eventos.commons.PaymentMethod;
 import service.eventos.dto.*;
 import service.eventos.exception.RecursoNaoEncontradoException;
 import service.eventos.model.*;
@@ -104,7 +105,7 @@ public class EventoService {
 
         evento.getParticipanteId().add(participanteId);
         eventoRepository.save(evento);
-        ingressosClient.createTicket(eventoId, participanteId, "PIX");
+        ingressosClient.createTicket(eventoId, participanteId, PaymentMethod.PIX);
     }
 
     @Transactional(readOnly = true)

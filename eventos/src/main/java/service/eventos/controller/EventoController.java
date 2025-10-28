@@ -21,7 +21,6 @@ import java.util.UUID;
 public class EventoController {
 
     private final EventoService eventoService;
-    // private final UserClient userClient; // <- não precisa mais para “quem sou eu”
 
     // Público
     @GetMapping
@@ -35,7 +34,7 @@ public class EventoController {
         return ResponseEntity.ok(eventoService.buscarPorId(id));
     }
 
-    // ======== Fluxo CLIENTE ========
+    // Fluxo CLIENTE
 
     @PostMapping("/{eventoId}/inscrever")
     public ResponseEntity<?> inscreverEmEvento(
@@ -64,7 +63,7 @@ public class EventoController {
         return ResponseEntity.ok(eventoService.buscarInscricoesDoParticipante(userId, pageable));
     }
 
-    // ======== Fluxo ORGANIZADOR ========
+    //Fluxo ORGANIZADOR
 
     @PostMapping("/criar-evento")
     public ResponseEntity<?> criarEvento(
@@ -106,6 +105,18 @@ public class EventoController {
 
         eventoService.deletarEvento(eventoId, organizerId);
         return ResponseEntity.noContent().build();
+    }
+    @GetMapping("/meus-eventos")
+    public ResponseEntity<?> getMeusEventos(
+            Pageable pageable,
+            @RequestHeader(value = "X-User-Id", required = false) UUID organizerId,
+            @RequestHeader(value = "X-User-Roles", required = false) String rolesCsv
+    ) {
+        if (organizerId == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Usuário não autenticado.");
+        if (!hasRole(rolesCsv, "ORGANIZADOR"))
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Apenas ORGANIZADOR pode consultar.");
+
+        return ResponseEntity.ok(eventoService.buscarEventosDoOrganizador(organizerId, pageable));
     }
 
     // utilzinho local

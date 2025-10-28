@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import service.eventos.client.IngressosClient;
 import service.eventos.client.UserClient;
+import service.eventos.commons.PaymentMethod;
 import service.eventos.dto.EventoRequisicaoDto;
 import service.eventos.exception.RecursoNaoEncontradoException;
 import service.eventos.model.Categoria;
@@ -94,12 +95,12 @@ class EventoServiceTest {
         Evento eventoMock = criarEventoMock(eventoId, organizerId, 2);
 
         when(eventoRepository.findById(eventoId)).thenReturn(Optional.of(eventoMock));
-        when(ingressosClient.createTicket(eventoId, participanteId, "PIX")).thenReturn(null);
+        when(ingressosClient.createTicket(eventoId, participanteId, PaymentMethod.PIX)).thenReturn(null);
 
         eventoService.inscreverEmEvento(eventoId, participanteId);
 
         verify(eventoRepository).save(eventoMock);
-        verify(ingressosClient).createTicket(eventoId, participanteId, "PIX");
+        verify(ingressosClient).createTicket(eventoId, participanteId, PaymentMethod.PIX);
         assertThat(eventoMock.getParticipanteId()).contains(participanteId);
     }
 
@@ -120,7 +121,7 @@ class EventoServiceTest {
         });
         assertThat(exception.getMessage()).isEqualTo("Evento com capacidade máxima atingida.");
         verify(eventoRepository, never()).save(any());
-        verify(ingressosClient, never()).createTicket(anyLong(), any(), anyString());
+        verify(ingressosClient, never()).createTicket(anyLong(), any(),PaymentMethod.PIX);
     }
 
     @Test

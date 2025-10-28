@@ -10,7 +10,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import service.eventos.client.UserClient;
 import service.eventos.controller.EventoController;
 import service.eventos.dto.EventoRequisicaoDto;
 import service.eventos.dto.EventoRespostaDto;
@@ -42,28 +41,11 @@ class EventoControllerTest {
     @MockitoBean
     private EventoService eventoService;
 
-    @MockitoBean
-    private UserClient userClient;
-
     private UUID organizerId;
-    private UserClient.UserRespostaDto mockOrganizador;
+    private UUID clienteId;
 
-    @BeforeEach
-    void setUp() {
-        organizerId = UUID.randomUUID();
-
-        // Cria DTO de usuário mockado
-        mockOrganizador = new UserClient.UserRespostaDto();
-        mockOrganizador.setId(organizerId);
-        mockOrganizador.setNome("Organizador Teste");
-        mockOrganizador.setTipo("ORGANIZADOR");
-
-        when(userClient.getUserById(organizerId)).thenReturn(mockOrganizador);
-    }
-
-
-    @Test
-    void deveCriarEventoERetornarStatusCreated() throws Exception {
+    // cria um DTO válido
+    private EventoRequisicaoDto criarRequisicaoValida() {
         EventoRequisicaoDto requisicao = new EventoRequisicaoDto();
         requisicao.setNome("Show de Lançamento");
         requisicao.setDescricao("Nova banda de rock");
@@ -71,7 +53,47 @@ class EventoControllerTest {
         requisicao.setData(LocalDateTime.now().plusMonths(1));
         requisicao.setCapacidade(200);
         requisicao.setCategoriaId(1L);
+        return requisicao;
+    }
 
+    @BeforeEach
+    void setUp() {
+        organizerId = UUID.randomUUID();
+        clienteId = UUID.randomUUID();
+    }
+
+    //testes de Endpoints Públicos
+
+    @Test
+    void deveListarEventosDisponiveis() throws Exception {
+        Page<EventoRespostaDto> paginaDeEventos = new PageImpl<>(List.of(new EventoRespostaDto()));
+        when(eventoService.listarEventosDisponiveis(any())).thenReturn(paginaDeEventos);
+
+        mockMvc.perform(get("/eventos")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .with(user("testuser")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void deveBuscarEventoPorId() throws Exception {
+        EventoRespostaDto evento = new EventoRespostaDto();
+        evento.setId(1L);
+        when(eventoService.buscarPorId(1L)).thenReturn(evento);
+
+        mockMvc.perform(get("/eventos/{id}", 1L)
+                        .with(user("testuser")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1L));
+    }
+
+
+    //Testes de organizador
+
+    @Test
+    void deveCriarEventoERetornarStatusCreated() throws Exception {
+        EventoRequisicaoDto requisicao = criarRequisicaoValida();
         EventoRespostaDto resposta = new EventoRespostaDto();
         resposta.setId(1L);
         resposta.setNome("Show de Lançamento");
@@ -80,8 +102,8 @@ class EventoControllerTest {
         when(eventoService.criarEvento(any(EventoRequisicaoDto.class), eq(organizerId))).thenReturn(resposta);
 
         mockMvc.perform(post("/eventos/criar-evento")
-
-                        .param("organizerId", organizerId.toString())
+                        .header("X-User-Id", organizerId.toString())
+                        .header("X-User-Roles", "ORGANIZADOR")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requisicao))
                         .with(user("testuser")).with(csrf()))
@@ -96,11 +118,25 @@ class EventoControllerTest {
         requisicaoInvalida.setNome("");
 
         mockMvc.perform(post("/eventos/criar-evento")
-                        .param("organizerId", organizerId.toString())
+                        .header("X-User-Id", organizerId.toString())
+                        .header("X-User-Roles", "ORGANIZADOR")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requisicaoInvalida))
                         .with(user("testuser")).with(csrf()))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void naoDeveCriarEventoSeRoleNaoForOrganizador() throws Exception {
+        EventoRequisicaoDto requisicao = criarRequisicaoValida();
+
+        mockMvc.perform(post("/eventos/criar-evento")
+                        .header("X-User-Id", organizerId.toString())
+                        .header("X-User-Roles", "CLIENTE")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requisicao))
+                        .with(user("testuser")).with(csrf()))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -112,7 +148,8 @@ class EventoControllerTest {
         when(eventoService.buscarEventosDoOrganizador(eq(organizerId), any())).thenReturn(paginaDeEventos);
 
         mockMvc.perform(get("/eventos/meus-eventos")
-                        .param("organizerId", organizerId.toString())
+                        .header("X-User-Id", organizerId.toString())
+                        .header("X-User-Roles", "ORGANIZADOR")
                         .param("page", "0")
                         .param("size", "10")
                         .with(user("testuser")))
@@ -127,8 +164,59 @@ class EventoControllerTest {
         doNothing().when(eventoService).deletarEvento(eventoId, organizerId);
 
         mockMvc.perform(delete("/eventos/{eventoId}", eventoId)
-                        .param("organizerId", organizerId.toString())
+                        .header("X-User-Id", organizerId.toString())
+                        .header("X-User-Roles", "ORGANIZADOR")
                         .with(user("testuser")).with(csrf()))
                 .andExpect(status().isNoContent());
+    }
+
+    //Testes de Cliente
+
+    @Test
+    void deveInscreverEmEventoComSucesso() throws Exception {
+        Long eventoId = 1L;
+        doNothing().when(eventoService).inscreverEmEvento(eventoId, clienteId);
+
+        mockMvc.perform(post("/eventos/{eventoId}/inscrever", eventoId)
+                        .header("X-User-Id", clienteId.toString())
+                        .header("X-User-Roles", "CLIENTE")
+                        .with(user("testuser")).with(csrf()))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void naoDeveInscreverSeNaoForCliente() throws Exception {
+        Long eventoId = 1L;
+
+        mockMvc.perform(post("/eventos/{eventoId}/inscrever", eventoId)
+                        .header("X-User-Id", organizerId.toString())
+                        .header("X-User-Roles", "ORGANIZADOR")
+                        .with(user("testuser")).with(csrf()))
+                .andExpect(status().isForbidden())
+                .andExpect(content().string("Apenas CLIENTE pode se inscrever."));
+    }
+
+    @Test
+    void naoDeveInscreverSeNaoAutenticado() throws Exception {
+        Long eventoId = 1L;
+
+        mockMvc.perform(post("/eventos/{eventoId}/inscrever", eventoId)
+                        .with(user("testuser")).with(csrf()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().string("Usuário não autenticado."));
+    }
+
+    @Test
+    void deveBuscarMinhasInscricoesComSucesso() throws Exception {
+        Page<EventoRespostaDto> paginaDeEventos = new PageImpl<>(List.of(new EventoRespostaDto()));
+        when(eventoService.buscarInscricoesDoParticipante(eq(clienteId), any())).thenReturn(paginaDeEventos);
+
+        mockMvc.perform(get("/eventos/minhas-inscricoes")
+                        .header("X-User-Id", clienteId.toString())
+                        .header("X-User-Roles", "CLIENTE")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .with(user("testuser")))
+                .andExpect(status().isOk());
     }
 }

@@ -5,6 +5,8 @@ import jakarta.validation.constraints.Positive;
 import lombok.Data;
 import service.eventos.commons.PaymentMethod;
 
+import java.util.UUID;
+
 @Data
 public class TicketReserveRequestDto {
     @NotNull
@@ -12,8 +14,7 @@ public class TicketReserveRequestDto {
     private Long eventId;
 
     @NotNull
-    @Positive
-    private Long participantId;
+    private UUID participantId;
 
 
     private service.eventos.commons.PaymentMethod method;
