@@ -3,36 +3,30 @@
 **Status:** Aceito (Implementado)
 
 ## Contexto
+O microsserviço `eventos-service` precisa proteger seus endpoints, garantindo que apenas usuários autenticados e com os papéis corretos possam executar ações.
 
-O microsserviço `eventos-service` precisa proteger seus endpoints, garantindo que apenas usuários autenticados e com os papéis corretos possam executar ações específicas.
-
-Este serviço não deve conter a lógica de gerenciamento de usuários, senhas ou papéis, pois essa responsabilidade é centralizada no `users-service`.
-
-Surgem duas abordagens principais para proteger os endpoints:
-1.  **Validação de Token Local:** O `eventos-service` receberia um token JWT, validaria sua assinatura e extrairia os papéis do token.
-2.  **Delegação por Chamada de Serviço:** O `eventos-service` recebe um ID de usuário e, para cada requisição, pergunta ao `users-service` se aquele usuário é válido e quais são suas permissões.
+Este serviço não deve conter a lógica de gerenciamento de tokens ou senhas, pois essa responsabilidade é centralizada no `autenticacao-service` e gerenciada pelo `API Gateway`.
 
 ## Decisão
 
-Foi decidido implementar a abordagem de Delegação por Chamada de Serviço.
+Foi decidido implementar a abordagem de **Delegação Passiva ao API Gateway (Trusted Headers)**.
 
 O fluxo de segurança opera da seguinte maneira:
-1.  **Configuração de Segurança Nula:** A configuração do Spring Security no `eventos-service` é definida como `permitAll()`, permitindo que todas as requisições HTTP cheguem ao controlador.
-2.  **ID via Query Param:** A aplicação cliente é responsável por enviar o `UUID` do usuário como um parâmetro de consulta na URL de cada endpoint protegido.
-3.  **Chamada HTTP Síncrona:** O `EventoController` recebe esse ID e, antes de executar a lógica de negócio, utiliza o `UserClient` para fazer uma chamada HTTP síncrona ao `users-service`.
-4.  **Autorização Manual:** O controlador inspeciona a resposta do `users-service`. Ele então aplica manualmente a lógica de autorização, verificando se o usuário existe e se o seu `tipo` é o esperado.
-5.  **Comunicação Inter-Serviços:** O serviço também utiliza clientes HTTP (`RestTemplate`) para se comunicar com outros serviços de forma síncrona, como o `IngressosClient` ao realizar uma inscrição.
+1.  **Validação no Gateway:** O `API Gateway` intercepta 100% das requisições. Ele é responsável por validar o `Authorization: Bearer` token.
+2.  **Injeção de Headers:** Após validar o token com sucesso, o Gateway remove o token e injeta cabeçalhos (`X-User-Id`, `X-User-Roles`) na requisição antes de encaminhá-la ao `eventos-service`.
+3.  **Autorização Manual no Controlador:** O `EventoController` lê os headers `X-User-Id` e `X-User-Roles` em cada método protegido.
+4.  **Verificação Local:** A lógica de autorização é aplicada manualmente no controlador, verificando se os headers existem e se contêm o `role` esperado.
 
 ## Consequências
 
 O que se torna mais fácil ou mais difícil como resultado dessa mudança?
 
 * **Positivas:**
-    * **Centralização da Lógica de Usuário:** O `users-service` permanece como a única fonte da verdade para dados de usuário, papéis e status. O `eventos-service` não precisa saber sobre senhas, tokens ou chaves secretas.
-    * **Simplicidade no `eventos-service`:** Este serviço não precisa gerenciar dependências de segurança, chaves de assinatura de token, ou configurar um `SecurityFilterChain` complexo. A lógica de permissão é explícita no controlador.
-    * **Atualização Imediata de Permissão:** Se um usuário tiver sua permissão alterada no `users-service`, a mudança é refletida imediatamente na próxima requisição ao `eventos-service`, pois os dados são buscados em tempo real.
+  * **Centralização da Autenticação:** A lógica de validação de token JWT existe *apenas* no Gateway e no `autenticacao-service`.
+  * **Simplicidade no `eventos-service`:** Este serviço não precisa gerenciar dependências de segurança (Spring Security, JWT) ou chaves secretas. A lógica de permissão é explícita no controlador.
+  * **Desacoplamento da Lógica:** O `eventos-service` foca apenas na sua lógica de negócio, sem se preocupar em *como* o usuário foi validado.
 
 * **Negativas e Riscos:**
-    * **Latência e Performance:** Cada requisição protegida ao `eventos-service` gera no mínimo uma chamada de rede síncrona adicional ao `users-service`. Isso aumenta o tempo de resposta total.
-    * **Acoplamento Forte:** O `eventos-service` fica fortemente acoplado à disponibilidade do `users-service`. Se o `users-service` ficar lento ou cair, todas as requisições protegidas do `eventos-service` falharão.
-    * **Duplicação de Código:** A lógica de verificação de autenticação e autorização é repetida em quase todos os métodos do `EventoController`.
+  * **Latência Adicional:** A arquitetura do Gateway introduz uma chamada de rede extra (Gateway -> Auth-Service) *para cada* requisição autenticada, o que impacta a performance dos endpoints deste serviço.
+  * **Segurança da Rede Interna:** A segurança deste microsserviço depende da topologia da rede. Se um ator malicioso conseguir acesso à rede interna e fazer uma chamada direta ao `eventos-service`.
+  * **Duplicação de Código:** A lógica de verificação de headers é repetida em quase todos os métodos do `EventoController`.
