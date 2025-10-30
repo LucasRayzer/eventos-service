@@ -1,11 +1,11 @@
-# Título: Micro-Service de evento
+# Título: Proteção de Endpoints via Delegação ao API Gateway
 
 **Status:** Aceito (Implementado)
 
 ## Contexto
-O microsserviço `eventos-service` precisa proteger seus endpoints, garantindo que apenas usuários autenticados e com os papéis corretos possam executar ações.
+**Como um componente da camada de negócio em nossa arquitetura em camadas**, o microsserviço `eventos-service` precisa proteger seus endpoints, garantindo que apenas usuários autenticados e com os papéis corretos possam executar ações.
 
-Este serviço não deve conter a lógica de gerenciamento de tokens ou senhas, pois essa responsabilidade é centralizada no `autenticacao-service` e gerenciada pelo `API Gateway`.
+Este serviço não deve conter a lógica de gerenciamento de tokens ou senhas, pois essa responsabilidade é centralizada no `autenticacao-service` e gerenciada pela camada de borda.
 
 ## Decisão
 
@@ -28,5 +28,6 @@ O que se torna mais fácil ou mais difícil como resultado dessa mudança?
 
 * **Negativas e Riscos:**
   * **Latência Adicional:** A arquitetura do Gateway introduz uma chamada de rede extra (Gateway -> Auth-Service) *para cada* requisição autenticada, o que impacta a performance dos endpoints deste serviço.
-  * **Segurança da Rede Interna:** A segurança deste microsserviço depende da topologia da rede. Se um ator malicioso conseguir acesso à rede interna e fazer uma chamada direta ao `eventos-service`.
+  * **Dependência Crítica do Auth-Service:** Este serviço não pode operar nenhuma função protegida se o `autenticacao-service` estiver offline, pois o Gateway falhará ao validar o token.
+  * **Segurança da Rede Interna:** A segurança deste microsserviço depende da topologia da rede. Se um ator malicioso conseguir acesso à rede interna e fazer uma chamada direta ao `eventos-service`, ele pode injetar headers falsos.
   * **Duplicação de Código:** A lógica de verificação de headers é repetida em quase todos os métodos do `EventoController`.
